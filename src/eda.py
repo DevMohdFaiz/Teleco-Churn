@@ -36,6 +36,7 @@ def plot_cat_cols(df: pd.DataFrame, cat_cols: List, hue: bool=False):
     
     for j in range(idx+1, len(ax)):
         fig.delaxes(ax[j]) 
+        
 
 def plot_num_cols(df, num_cols: List, hue:bool=False, kde=False, nrows=1):
     ncols = int(np.ceil(len(num_cols)/nrows))
@@ -51,5 +52,27 @@ def plot_num_cols(df, num_cols: List, hue:bool=False, kde=False, nrows=1):
         axis.set_ylabel('')
         axis.set_xlabel('')
     
+    for j in range(idx+1, len(ax)):
+        fig.delaxes(ax[j])
+
+
+def plot_churn_ratio(df: pd.DataFrame, cat_cols: List, nrows:int =3, figsize: Tuple =(15, 7)):
+    ncols = int(np.ceil(len(cat_cols)/nrows))
+    fig, ax = plt.subplots(figsize=figsize, nrows=nrows, ncols=ncols, constrained_layout=True)
+    fig.suptitle(f"Churn Ratio")
+    ax= ax.flatten()
+    for idx, col in enumerate(cat_cols):
+            churn_df = pd.crosstab(df[col], df['Churn'])
+            churn_df['churn_ratio'] = churn_df['Yes']/ (churn_df['No']+ churn_df['Yes'])
+            axis = sns.barplot(churn_df['churn_ratio'], ax=ax[idx])
+            axis.set_title(f"{col}")
+            axis.set_xlabel('')
+            axis.set_ylabel('')
+            rotation = 0 if len(churn_df) <=3 else 15
+            axis.tick_params(axis='x', rotation=rotation)
+            axis.bar_label(axis.containers[0], fmt=lambda x: f'{(x/len(churn_df))*100:0.2f}%')
+            axis.set_ylim(0, (churn_df['churn_ratio'].max())*1.1)
+    # plt.subplots_adjust(hspace=2, wspace=.5)
+
     for j in range(idx+1, len(ax)):
         fig.delaxes(ax[j])
