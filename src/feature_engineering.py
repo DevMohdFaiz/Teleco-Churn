@@ -46,7 +46,7 @@ def cluster_customers(df:pd.DataFrame, n_clusters:int =4, visualize:bool = False
         plt.axis('off')
         plt.suptitle(f"Customers Segmentation")
         return 
-    return df
+    return df, scaler, kmeans
 
 def encode_cat_cols(df, cat_cols):
     encoding_map = {'Male': 1, 'Female': 0, 'Yes': 1, 'No': 0, 'No phone service': 0, 'No internet service': 0}
@@ -55,5 +55,7 @@ def encode_cat_cols(df, cat_cols):
     for col in binary_cols:
         if col != 'SeniorCitizen':
             df[col] = df[col].map(encoding_map).fillna(0)
-    df = pd.get_dummies(df, columns=multi_cols, drop_first=True)
+    df = pd.get_dummies(df, columns=multi_cols, drop_first=True)    
+    fixed_cols = [col.replace(" ", "_").replace("(", "").replace(")", "") for col in df.columns]
+    df.columns = fixed_cols
     return df

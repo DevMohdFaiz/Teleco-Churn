@@ -19,4 +19,5 @@ def preprocess_df(df:pd.DataFrame):
     num_cols = df.select_dtypes(include='number').columns.tolist()
     num_cols.remove('SeniorCitizen')
     df['SeniorCitizen'] = df['SeniorCitizen'].astype(object)
+    # df[]
     return df, num_cols, cat_cols
