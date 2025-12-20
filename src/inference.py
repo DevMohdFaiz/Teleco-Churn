@@ -107,16 +107,10 @@ def load_models():
 
 
 def preprocess_customer_data(customer_data, model, model_one_hot_encoder, model_scaler, model_kmeans):
-    # df = pd.DataFrame([customer_data.dict()])
     df = pd.DataFrame([customer_data.model_dump()])
-    # df, num_cols, cat_cols = preprocessing.preprocess_df(sample_data)
     cat_cols = df.select_dtypes(include='object').columns.tolist()
     cat_cols.extend(['SeniorCitizen'])
-    # cat_cols.remove('customerID')
-    # cat_cols.remove('Churn')
     num_cols = df.select_dtypes(include='number').columns.tolist()
-    # num_cols.remove('SeniorCitizen')
-    # df['SeniorCitizen'] = df['SeniorCitizen'].astype(object)
     print(df.columns)
     df['is_high_spender'] = df['MonthlyCharges'] > 70
     df['is_new_customer'] = df['tenure'] < 20
@@ -141,7 +135,6 @@ def preprocess_customer_data(customer_data, model, model_one_hot_encoder, model_
     multi_cols = ['InternetService', 'Contract', 'PaymentMethod']
     binary_cols = [c for c in cat_cols if c not in multi_cols]
     for col in binary_cols:
-    #     if col != 'SeniorCitizen':
         df[col] = df[col].map(encoding_map).fillna(0)
     ohe_features = model_one_hot_encoder.transform(df[multi_cols])
     df[model_one_hot_encoder.get_feature_names_out()] = ohe_features.toarray()
@@ -171,20 +164,18 @@ models = {}
 @app.on_event("startup")
 async def startup_event():
     print("Loading models...")
-    (
-        models["initial_columns"],
-        models["model"],  
-        models["model_one_hot_encoder"], 
-        models["model_scaler"], 
-        models["model_kmeans"]
-    ) = load_models()
-    print(f"Loaded all models...")
+    try:
+        (
+            models["initial_columns"],
+            models["model"],  
+            models["model_one_hot_encoder"], 
+            models["model_scaler"], 
+            models["model_kmeans"]
+        ) = load_models()
+        print(f"Loaded all models...")
+    except Exception as e:
+        print(f"An Error occured: {e}")
 
-# @app.on_event("startup")
-# async def start_up():
-#     global initial_columns, model_one_hot_encoder, model, model_scaler, model_kmeans
-#     initial_columns, model_one_hot_encoder, model, model_scaler, model_kmeans = load_models()
-#     print("Models loaded successfully")
 
 @app.get("/")
 def home():
@@ -192,19 +183,22 @@ def home():
 
 @app.get("/health")
 def get_health():
-    return {"status": "healthy"}
+    return {"status": "healthy", "n_models": len(models)}
 
 @app.post("/predict")
 def predict_churn(customer_data: CustomerData, threshold= 0.48950):
     # initial_columns, model, model_one_hot_encoder, model_scaler, model_kmeans = inference.load_models()
-    customer_df = preprocess_customer_data(customer_data,
-                                           model=models['model'], model_one_hot_encoder=models['model_one_hot_encoder'], 
-                                           model_scaler=models['model_scaler'], model_kmeans=models['model_kmeans'])
+    customer_df = preprocess_customer_data(
+                            customer_data,
+                            model=models['model'],
+                            model_one_hot_encoder=models['model_one_hot_encoder'], 
+                            model_scaler=models['model_scaler'],
+                            model_kmeans=models['model_kmeans']
+                    )
     pred_prob = models['model'].predict_proba(customer_df)
-    # model_confidence = pred_prob
-    # non_churn_prob, churn_probability = pred_prob[0, 0], pred_prob[0, 1]
-    non_churn_prob = float(pred_prob[0, 0])     # Get element [0,0]
-    churn_probability = float(pred_prob[0, 1])  # Get element [0,1]
+   
+    non_churn_prob = float(pred_prob[0, 0])     
+    churn_probability = float(pred_prob[0, 1]) 
     prediction = int(churn_probability >= threshold)
     if churn_probability >= 0.7:
         risk_level = 'high'
@@ -214,10 +208,7 @@ def predict_churn(customer_data: CustomerData, threshold= 0.48950):
         risk_level = 'low'
     return PredictionResponse(
         prediction= prediction, non_churn_prob= non_churn_prob, churn_prob=churn_probability, risk_level = risk_level
-        )
-    # return PredictionResponse(
-    #     prediction= int(prediction), model_confidence= model_confidence
-    # ) 
+    ) 
 
 
 if __name__== '__main__':

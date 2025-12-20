@@ -6,7 +6,6 @@ st.set_page_config(page_title="Churn Prediction", page_icon="🔮", layout="wide
 
 API_URL = "http://localhost:8000"
 
-
 def check_api():
     """Check if API is running"""
     try:
@@ -35,7 +34,6 @@ if check_api():
     st.success("✅ API Connected")
 else:
     st.error("API Not Connected - Start the backend first!")
-    # st.code("python fastapi_with_pydantic.py")
     st.stop()
 
 st.markdown("---")
@@ -99,20 +97,18 @@ customer_data = {
     'MonthlyCharges': monthly_charges,
     'TotalCharges': total_charges
 }
-# st.write(inference.load_models())
 
 
 
-# Make prediction
-with st.spinner("Analyzing..."):
+
+with st.spinner("Making Prediction..."):
     result = make_prediction(customer_data)
 
 if result:
     st.markdown("---")
     st.header("📊 Prediction Result")
-    st.write(result)
-        
-        # Display metrics
+    # st.write(result)
+
     col1, col2, col3 = st.columns(3)
     
     with col1:
