@@ -21,7 +21,8 @@ def service_count(df:pd.DataFrame):
     for service in services:
         if service == 'InternetService': 
             service_count += df[service].apply(lambda x: 0 if x == 'No' else 1)
-        service_count += df[service].apply(lambda x: 1 if x== 'Yes' else 0)
+        else:
+            service_count += df[service].apply(lambda x: 1 if x== 'Yes' else 0)
     df['service_count'] = service_count
     return df
 

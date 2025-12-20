@@ -11,7 +11,6 @@ def preprocess_df(df:pd.DataFrame):
     df['TotalCharges'] = total_charges
     df.loc[df['TotalCharges']<1, 'TotalCharges'] = df['TotalCharges'].median()
 
-
     cat_cols = df.select_dtypes(include='object').columns.tolist()
     cat_cols.extend(['SeniorCitizen'])
     cat_cols.remove('customerID')
