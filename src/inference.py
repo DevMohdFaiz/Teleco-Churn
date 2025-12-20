@@ -111,7 +111,6 @@ def preprocess_customer_data(customer_data, model, model_one_hot_encoder, model_
     cat_cols = df.select_dtypes(include='object').columns.tolist()
     cat_cols.extend(['SeniorCitizen'])
     num_cols = df.select_dtypes(include='number').columns.tolist()
-    print(df.columns)
     df['is_high_spender'] = df['MonthlyCharges'] > 70
     df['is_new_customer'] = df['tenure'] < 20
     services = ['PhoneService', 'MultipleLines', 'InternetService', 'OnlineSecurity', \
@@ -123,6 +122,7 @@ def preprocess_customer_data(customer_data, model, model_one_hot_encoder, model_
         else:
             service_count += df[service].apply(lambda x: 1 if x== 'Yes' else 0)
     df['service_count'] = service_count
+
     df['tenure'] = df['tenure'].replace(0,1)
     df ['avg_price'] = round((df['TotalCharges']/df['tenure']), 2)
     df['increase_amount'] =  round((df['MonthlyCharges'] - df['avg_price']), 2)
