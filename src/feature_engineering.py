@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import OneHotEncoder 
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 
@@ -55,7 +56,12 @@ def encode_cat_cols(df, cat_cols):
     for col in binary_cols:
         if col != 'SeniorCitizen':
             df[col] = df[col].map(encoding_map).fillna(0)
-    df = pd.get_dummies(df, columns=multi_cols, drop_first=True)    
+    ohe = OneHotEncoder(drop='first')
+    ohe_features = ohe.fit_transform(df[multi_cols])
+    ohe_columns = ohe.get_feature_names_out()
+    df[ohe_columns] = ohe_features.toarray()
+    df = df.drop(multi_cols, axis=1)
+    # df = pd.get_dummies(df, columns=multi_cols, drop_first=True)    
     fixed_cols = [col.replace(" ", "_").replace("(", "").replace(")", "") for col in df.columns]
     df.columns = fixed_cols
-    return df
+    return df, ohe
