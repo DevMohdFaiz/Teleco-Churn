@@ -1,5 +1,9 @@
-import streamlit as st
+import shap
+import numpy as np
 import requests
+import matplotlib.pyplot as plt
+import streamlit as st
+from PIL import Image
 from src import inference
 
 st.set_page_config(page_title="Churn Prediction", page_icon="🔮", layout="wide")
@@ -122,6 +126,21 @@ if result:
     
     with col3:
         st.metric("Risk Level", f"{result['risk_level'].capitalize()}")
+        shap_data = result['calculated_shap_vals']
+
+    shap_explanation = shap.Explanation(
+        values= np.array(shap_data[0]),
+        base_values= shap_data[1],
+        data= np.array(shap_data[2]),
+        feature_names= shap_data[3]
+    )
+    fig, _ =plt.subplots(figsize=(10, 8))
+    shap_img = shap.waterfall_plot(shap_explanation, show=True)
+    plt.title("Top Prediction Drivers", fontweight=600, fontsize=17)
+    st.pyplot(fig, width=700)
+        # st.image(shap_img)
+
+        
         
     #     # Interpretation
     #     st.markdown("---")
