@@ -1,11 +1,16 @@
 import joblib
 import uvicorn
+import shap
+import io
+import base64
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from contextlib import asynccontextmanager
+from typing import Any
 from src import preprocessing
 
 
@@ -30,42 +35,15 @@ class CustomerData(BaseModel):
     MonthlyCharges: float
     TotalCharges: float
 
-    # gender: int
-    # SeniorCitizen: int
-    # Partner: int
-    # Dependents: int
-    # tenure:  int
-    # PhoneService: int
-    # MultipleLines: int
-    # OnlineSecurity: int
-    # OnlineBackup: int
-    # DeviceProtection: int
-    # TechSupport: int
-    # StreamingTV: int
-    # StreamingMovies: int
-    # PaperlessBilling: int
-    # MonthlyCharges: float
-    # is_high_spender: bool
-    # is_new_customer: bool
-    # service_count: int
-    # increase_pct: float
-    # customer_segment: int
-    # InternetService_Fiber_optic: bool
-    # InternetService_No: bool
-    # Contract_One_year: bool
-    # Contract_Two_year: bool
-    # PaymentMethod_Credit_card_automatic: bool
-    # PaymentMethod_Electronic_check: bool
-    # PaymentMethod_Mailed_check: bool
-
 
 class PredictionResponse(BaseModel):
     prediction: int
     non_churn_prob: float
     churn_prob: float
     risk_level: str
+    # waterfall_plot: str
+    calculated_shap_vals: list
     # model_confidence: list #float
-
 
 
 def load_models():
@@ -99,9 +77,16 @@ def load_models():
         all_models.append(model_kmeans)
     except:
         print("Model Kmeans not found at {models/model_kmeans.pkl}")
+
+    try: 
+        X_train_sample = joblib.load("models/X_train_sample.pkl") 
+        all_models.append(X_train_sample)
+    except:
+        print("X_train_sample not found at {models/logreg_shap_explainer.pkl}")
         
-    if len(all_models)<5:
-        return f"Pls check again and ensure all five models are properly loaded!"
+    # return all_models
+    if len(all_models)<4:
+        return f"Pls check again and ensure all six models are properly loaded!"
     else:
         return all_models
 
@@ -159,19 +144,21 @@ app.add_middleware(
     allow_methods= ["*"],
     allow_headers = ["*"]
 )
-models = {}
+
+all_models = {}
 
 @app.on_event("startup")
 async def startup_event():
     print("Loading models...")
     try:
         (
-            models["initial_columns"],
-            models["model"],  
-            models["model_one_hot_encoder"], 
-            models["model_scaler"], 
-            models["model_kmeans"]
-        ) = load_models()
+            all_models["initial_columns"],
+            all_models["model"],  
+            all_models["model_one_hot_encoder"], 
+            all_models["model_scaler"], 
+            all_models["model_kmeans"],
+            all_models["X_train_sample"]
+        )= load_models()
         print(f"Loaded all models...")
     except Exception as e:
         print(f"An Error occured: {e}")
@@ -183,19 +170,19 @@ def home():
 
 @app.get("/health")
 def get_health():
-    return {"status": "healthy", "n_models": len(models)}
+    return {"status": "healthy", "n_models": len(load_models())}
 
 @app.post("/predict")
 def predict_churn(customer_data: CustomerData, threshold= 0.48950):
     # initial_columns, model, model_one_hot_encoder, model_scaler, model_kmeans = inference.load_models()
     customer_df = preprocess_customer_data(
-                            customer_data,
-                            model=models['model'],
-                            model_one_hot_encoder=models['model_one_hot_encoder'], 
-                            model_scaler=models['model_scaler'],
-                            model_kmeans=models['model_kmeans']
+                        customer_data,
+                        model=all_models['model'],
+                        model_one_hot_encoder=all_models['model_one_hot_encoder'], 
+                        model_scaler=all_models['model_scaler'],
+                        model_kmeans=all_models['model_kmeans']
                     )
-    pred_prob = models['model'].predict_proba(customer_df)
+    pred_prob = all_models['model'].predict_proba(customer_df)
    
     non_churn_prob = float(pred_prob[0, 0])     
     churn_probability = float(pred_prob[0, 1]) 
@@ -206,8 +193,43 @@ def predict_churn(customer_data: CustomerData, threshold= 0.48950):
         risk_level = 'medium'
     else:
         risk_level = 'low'
+ 
+    pred_prob = all_models['model'].predict_proba(customer_df)[0, 1]
+
+    shap_explainer = shap.LinearExplainer(all_models['model'], all_models['X_train_sample'])
+    shap_values_customer = shap_explainer.shap_values(customer_df)
+    
+    calculated_shap_vals =  [
+                                list(shap_values_customer[0]),
+                                shap_explainer.expected_value,
+                                customer_df.values[0].tolist(),
+                                customer_df.columns.tolist()
+                            ]
+
+    # shap_explanation = shap.Explanation(
+    #     values=shap_values_customer[0], 
+    #     base_values=shap_explainer.expected_value,
+    #     data=customer_df.values[0], 
+    #     feature_names=customer_df.columns.tolist()
+    # )
+
+    # fig, ax =plt.subplots(figsize=(10,5))
+    # shap.waterfall_plot(shap_explanation, show=False)
+    # plt.title(f"Explanation for Churn Risk: {pred_prob:.1%}")
+    # plt.tight_layout()
+    # plt.show()
+
+    # buf = io.BytesIO()
+    # plt.savefig(buf, format='png', bbox_inches='tight')
+    # buf.seek(0)
+    # img_base64 = base64.b64encode(buf.read()).decode('utf-8')
+    # plt.close()
     return PredictionResponse(
-        prediction= prediction, non_churn_prob= non_churn_prob, churn_prob=churn_probability, risk_level = risk_level
+        prediction= prediction,
+        non_churn_prob= non_churn_prob,
+        churn_prob= churn_probability,
+        risk_level = risk_level,
+        calculated_shap_vals = calculated_shap_vals
     ) 
 
 
