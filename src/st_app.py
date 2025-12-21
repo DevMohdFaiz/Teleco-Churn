@@ -4,7 +4,7 @@ import requests
 import matplotlib.pyplot as plt
 import streamlit as st
 from PIL import Image
-from src import inference
+# from src import inference
 
 st.set_page_config(page_title="Churn Prediction", page_icon="🔮", layout="wide")
 
