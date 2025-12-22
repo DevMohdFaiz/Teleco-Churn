@@ -8,3 +8,5 @@ uvicorn
 shap
 scikit-learn
 streamlit
+groq
+dotenv
