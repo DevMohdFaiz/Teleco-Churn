@@ -19,7 +19,8 @@ if root_dir not in sys.path:
 
 st.set_page_config(page_title="Churn Prediction", page_icon="🔮", layout="wide")
 
-API_URL = "http://localhost:8000"
+# API_URL = "http://localhost:8000"
+API_URL = "https://teleco-churn-api.onrender.com"
 
 def check_api():
     """Check if API is running"""
