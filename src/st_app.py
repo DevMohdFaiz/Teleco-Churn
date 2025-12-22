@@ -1,11 +1,13 @@
 import os
 import sys
 import shap
-import numpy as np
 import requests
+import numpy as np
 import matplotlib.pyplot as plt
 import streamlit as st
 from PIL import Image
+from typing import Dict
+import ai_insights
 # from src import inference
 
 current_dir = os.path.dirname(os.path.abspath("inference"))
@@ -32,7 +34,7 @@ def check_api():
 
 
 def make_prediction(customer_data):
-    """Send data to API and get prediction"""
+    """Send customer data to API and get prediction"""
     try:
         response = requests.post(f"{API_URL}/predict", json=customer_data)
         if response.status_code == 200:
@@ -43,6 +45,24 @@ def make_prediction(customer_data):
     except Exception as e:
         st.error(f"Connection error: {str(e)}")
         return None
+
+def get_ai_response(shap_explanation, result)-> Dict:
+    """
+    Send message context for Groq and return a response
+    
+    Args:
+        shap_explanation: shap_explainer
+        result: results returned from fastapi
+    """
+    customer_shap_data = {i: round(float(j), 2) for i,j in zip(shap_explanation.feature_names, shap_explanation.values)}
+    top_churn_factors = sorted(customer_shap_data.items(), key=lambda x: abs(x[1]), reverse=True)[:9]
+    ai_prompt = ai_insights.build_context(  churn_pred = result['prediction'],
+                                            churn_probability=(result['churn_prob']*100), 
+                                            top_churn_factors=top_churn_factors,
+                                            data_features= shap_explanation.feature_names
+                )
+    ai_response = ai_insights.groq_chat(prompt=ai_prompt)
+    return ai_response
 
 
 st.title("Churn Prediction App")
@@ -70,9 +90,9 @@ with col2:
     contract_type = st.selectbox("Contract Type", ["Month-to-month", "One year", "Two year"])
     paperless_billing = st.selectbox("Paperless Billing", ["Yes", "No"])
     payment_method = st.selectbox("Payment Method", ["Electronic check", "Mailed check", "Bank transfer (automatic)", "Credit card (automatic)"])
-    tenure = st.number_input("Tenure (months)", min_value=0, max_value=200)
+    tenure = st.number_input("Tenure (months)", min_value=0, max_value=200, value=5)
     monthly_charges = st.number_input("Monthly Charges ($)", min_value=1.0, value=10.0, step=5.0)
-    total_charges = st.number_input("Total Charges ($)", min_value=0.0, value=846.0, step=10.0)
+    total_charges = st.number_input("Total Charges ($)", min_value=0.0, value=50.0, step=10.0)
 
 col3, col4 = st.columns(2)
 with col3:
@@ -90,8 +110,7 @@ with col4:
     streaming_movies = st.selectbox("Streaming Movies", ["Yes", "No", "No internet service"], key='streaming_movies')
 st.markdown("---")
 
-# Predict button
-# if st.button("🔮 Predict Churn", use_container_width=True):
+
 customer_data = {
     'tenure': tenure,
     'gender': gender,
@@ -117,40 +136,54 @@ customer_data = {
 
 
 
-with st.spinner("Making Prediction..."):
-    result = make_prediction(customer_data)
+if st.button("Predict Churn", use_container_width=True, key='prediction_button'):
+    with st.spinner("Making Prediction..."):
+        result = make_prediction(customer_data)
 
-if result:
-    st.markdown("---")
-    st.header("📊 Prediction Result")
-    # st.write(result)
+        if result:
+            st.markdown("---")
+            st.header("📊 Prediction Result")
+            # st.write(result)
 
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        if result['prediction'] == 1:
-            st.metric("Prediction", "WILL CHURN ⚠️", delta="High Risk")
-        else:
-            st.metric("Prediction", "WILL STAY ✅", delta="Low Risk")
-        
-    with col2:
-        st.metric("Churn Probability", f"{(result['churn_prob']*100):.2f}%")
-    
-    with col3:
-        st.metric("Risk Level", f"{result['risk_level'].capitalize()}")
-        shap_data = result['calculated_shap_vals']
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                if result['prediction'] == 1:
+                    st.metric("Prediction", "WILL CHURN ⚠️", delta="High Risk")
+                else:
+                    st.metric("Prediction", "WILL STAY ✅", delta="Low Risk")
+                
+            with col2:
+                st.metric("Churn Probability", f"{(result['churn_prob']*100):.2f}%")
+            
+            with col3:
+                st.metric("Risk Level", f"{result['risk_level'].capitalize()}")
+                shap_data = result['calculated_shap_vals']
 
-    shap_explanation = shap.Explanation(
-        values= np.array(shap_data[0]),
-        base_values= shap_data[1],
-        data= np.array(shap_data[2]),
-        feature_names= shap_data[3]
-    )
-    fig, _ =plt.subplots(figsize=(10, 8))
-    shap_img = shap.waterfall_plot(shap_explanation, show=True)
-    plt.title("Top Prediction Drivers", fontweight=600, fontsize=17)
-    st.pyplot(fig, width=700)
-        # st.image(shap_img)
+            shap_explanation = shap.Explanation(
+                values= np.array(shap_data[0]),
+                base_values= shap_data[1],
+                data= np.array(shap_data[2]),
+                feature_names= shap_data[3]
+            )
+            fig, _ =plt.subplots(figsize=(10, 8))
+            shap_img = shap.waterfall_plot(shap_explanation, show=True)
+            plt.title("Top Prediction Drivers", fontweight=600, fontsize=17)
+            st.pyplot(fig, width=700)
+            st.markdown("---")
+
+            # if st.button("Get AI-Driven Insights", use_container_width=True, key="ai_insights"):
+            with st.spinner("Getting AI Insights..."):
+                ai_response = get_ai_response(
+                    shap_explanation=shap_explanation,
+                    result=result
+                )
+                
+            st.subheader("AI Insights") 
+            with st.chat_message(name="assistant"):
+                st.markdown(ai_response['response'])
+
+                    # st.image(shap_img)
 
         
         
