@@ -1,8 +1,8 @@
+import os
+import sys
 import joblib
 import uvicorn
 import shap
-import io
-import base64
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -13,6 +13,14 @@ from contextlib import asynccontextmanager
 from typing import Any
 from src import preprocessing
 
+
+current_dir = os.path.dirname(os.path.abspath("inference"))
+root_dir = os.path.abspath(os.path.join(current_dir, ".."))
+
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
 
 class CustomerData(BaseModel):
     tenure: int

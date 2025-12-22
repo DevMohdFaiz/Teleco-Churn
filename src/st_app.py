@@ -1,3 +1,5 @@
+import os
+import sys
 import shap
 import numpy as np
 import requests
@@ -5,6 +7,15 @@ import matplotlib.pyplot as plt
 import streamlit as st
 from PIL import Image
 # from src import inference
+
+current_dir = os.path.dirname(os.path.abspath("inference"))
+root_dir = os.path.abspath(os.path.join(current_dir, ".."))
+
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
+
 
 st.set_page_config(page_title="Churn Prediction", page_icon="🔮", layout="wide")
 
