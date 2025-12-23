@@ -6,6 +6,7 @@ from typing import Dict
 
 
 def get_api_key():
+    """Get Groq API Key from environment"""
     GROQ_API_KEY = get_key(".env", "GROQ_API_KEY")
     if GROQ_API_KEY is None:
         try: 
@@ -26,6 +27,16 @@ def call_groq(GROQ_API_KEY=GROQ_API_KEY):
 
 
 def build_context(churn_pred, churn_probability, top_churn_factors, data_features):
+    """
+    Build the prompt context to be fed to the LLM
+    Args:
+        churn_pred (int): churn_prediction
+        churn_probabaility (float): churn_probability
+        top_churn_factors (np.array): top features influencing churn prediction from SHAP
+        data_features (list): names of features fed to SHAP
+    Returns:
+        prompt: prompt to be fed to LLM
+    """
     prompt = f"""You are a customer retention analyst for a telecommunications company. Analyze this churn prediction:
 
     CUSTOMER CHURN RISK: {churn_probability}%
@@ -40,21 +51,23 @@ def build_context(churn_pred, churn_probability, top_churn_factors, data_feature
     CONTEXT:
     - `increase_pct`: Percentage increase in monthly charges vs. customer's historical average
     - `tenure`: Months as a customer
-    - `customer_segment`: Behavioral cluster (0=price-sensitive, 1=service-focused, 2=premium)
+    - `customer_segment`: Behavioral cluster 
 
-    Common telecom churn drivers include: contract flexibility, payment friction, service quality issues, price sensitivity, and competing offers.
+    Common telecom churn drivers include: contract lenght (Monthly, Yearly or Biennial),
+    payment method, number of services subscribed to, price increase, multiple lines, customer segment 
+    and whether the customer is a senior citizen.
 
     Provide analysis in this format:
 
-    RISK ASSESSMENT (2-3 sentences):
+    RISK ASSESSMENT:
     [Explain why this customer might leave, considering telecom industry context]
 
-    RETENTION STRATEGY (3 specific actions):
+    RETENTION STRATEGY:
     - [Action 1 - address primary risk factor]
     - [Action 2 - leverage protective factors]
     - [Action 3 - proactive engagement]
 
-    Keep it actionable for customer service teams and retention managers."""
+    Keep it actionable and insightful for customer service teams and retention managers."""
     return prompt
 
 
