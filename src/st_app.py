@@ -8,7 +8,6 @@ import streamlit as st
 from PIL import Image
 from typing import Dict
 import ai_insights
-# from src import inference
 
 current_dir = os.path.dirname(os.path.abspath("inference"))
 root_dir = os.path.abspath(os.path.join(current_dir, ".."))
@@ -19,7 +18,7 @@ if root_dir not in sys.path:
     sys.path.insert(0, root_dir)
 
 
-st.set_page_config(page_title="Churn Prediction", page_icon="🔮", layout="wide")
+st.set_page_config(page_title="Churn Prediction", page_icon="🔮", layout="centered")
 
 # API_URL = "http://localhost:8000"
 API_URL = "https://teleco-churn-api.onrender.com"
@@ -143,7 +142,6 @@ if st.button("Predict Churn", use_container_width=True, key='prediction_button')
         if result:
             st.markdown("---")
             st.header("📊 Prediction Result")
-            # st.write(result)
 
             col1, col2, col3 = st.columns(3)
             
