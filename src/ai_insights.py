@@ -59,7 +59,7 @@ def build_context(churn_pred, churn_probability, top_churn_factors, data_feature
 
     Provide analysis in this format:
 
-    RISK ASSESSMENT:
+    RISK ASSESSMENT (2-3) sentences:
     [Explain why this customer might leave, considering telecom industry context]
 
     RETENTION STRATEGY:
