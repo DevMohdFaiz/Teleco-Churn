@@ -7,7 +7,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 
 
-def binary_enc(df):
+def binary_enc(df:pd.DataFrame):
     df['is_high_spender'] = df['MonthlyCharges'] > 70
     df['is_new_customer'] = df['tenure'] < 20
     df['Churn'] = df['Churn'].map({'Yes': 1, 'No': 0})
@@ -35,7 +35,7 @@ def check_price_increase(df:pd.DataFrame):
     return df
 
 def cluster_customers(df:pd.DataFrame, n_clusters:int =4, visualize:bool = False):
-    """Cluster customers based on tenure, and charges"""
+    """Cluster customers based on tenure, Monthly charges and Total charges"""
     cols_to_cluster = ['tenure', 'MonthlyCharges', 'TotalCharges']
     scaler = StandardScaler()
     scaled_features = scaler.fit_transform(df[cols_to_cluster])
@@ -51,6 +51,7 @@ def cluster_customers(df:pd.DataFrame, n_clusters:int =4, visualize:bool = False
     return df, scaler, kmeans
 
 def encode_cat_cols(df, cat_cols):
+    """Encode categorical features to make them ready to be fed into our models"""
     encoding_map = {'Male': 1, 'Female': 0, 'Yes': 1, 'No': 0, 'No phone service': 0, 'No internet service': 0}
     multi_cols = ['InternetService', 'Contract', 'PaymentMethod']
     binary_cols = [c for c in cat_cols if c not in multi_cols]

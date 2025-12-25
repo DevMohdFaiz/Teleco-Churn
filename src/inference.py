@@ -14,6 +14,7 @@ from typing import Any
 from src import preprocessing
 
 
+# Did this to fix path issues encountered during deployment
 current_dir = os.path.dirname(os.path.abspath("inference"))
 root_dir = os.path.abspath(os.path.join(current_dir, ".."))
 
@@ -22,7 +23,11 @@ if current_dir not in sys.path:
 if root_dir not in sys.path:
     sys.path.insert(0, root_dir)
 
+
 class CustomerData(BaseModel):
+    """
+    Validation of customer data input for fastapi
+    """
     tenure: int
     gender: str
     SeniorCitizen: str
@@ -45,6 +50,7 @@ class CustomerData(BaseModel):
 
 
 class PredictionResponse(BaseModel):
+    """Validation of response to be returned by fastapi"""
     prediction: int
     non_churn_prob: float
     churn_prob: float
@@ -55,6 +61,7 @@ class PredictionResponse(BaseModel):
 
 
 def load_models():
+    """Load the needed models saved in the `models` directory"""
     all_models = []
     try:
         initial_columns = joblib.load("models/initial_columns.pkl")
@@ -100,6 +107,17 @@ def load_models():
 
 
 def preprocess_customer_data(customer_data, model, model_one_hot_encoder, model_scaler, model_kmeans):
+    """
+    Preprocess customer data dictionary to match the preprocessing steps applied during model training 
+    in order to prepare the data for inference
+
+    Args:
+        customer_data: customer data from streamlit
+        model: trained model
+        model_one_hot_encoder: OneHotEncoder used during training
+        model_scaler: Scaler fitted during training
+        model_kmeans: Kmeans fitted during training
+    """
     df = pd.DataFrame([customer_data.model_dump()])
     cat_cols = df.select_dtypes(include='object').columns.tolist()
     cat_cols.extend(['SeniorCitizen'])
@@ -120,10 +138,14 @@ def preprocess_customer_data(customer_data, model, model_one_hot_encoder, model_
     df ['avg_price'] = round((df['TotalCharges']/df['tenure']), 2)
     df['increase_amount'] =  round((df['MonthlyCharges'] - df['avg_price']), 2)
     df['increase_pct'] = round(((df['increase_amount']/df['MonthlyCharges']) *100), 2)
+
+    #clustering and scaling
     cols_to_cluster = ['tenure', 'MonthlyCharges', 'TotalCharges']
     scaled_features = model_scaler.transform(df[cols_to_cluster])
     customer_segment = model_kmeans.predict(scaled_features)
     df['customer_segment'] = customer_segment
+
+    # encoding non-numerical features
     encoding_map = {'Male': 1, 'Female': 0, 'Yes': 1, 'No': 0, 'No phone service': 0, 'No internet service': 0}
     multi_cols = ['InternetService', 'Contract', 'PaymentMethod']
     binary_cols = [c for c in cat_cols if c not in multi_cols]
@@ -137,13 +159,15 @@ def preprocess_customer_data(customer_data, model, model_one_hot_encoder, model_
     df.columns = fixed_cols
     df = df.reindex(columns=model.feature_names_in_)
     missing_columns = [col for (idx, col) in enumerate(df.columns) if col != model.feature_names_in_[idx]]
+
+    #check if our dataframe columns and columns during model fitting are exact matches
     try:
         assert (model.feature_names_in_ == df.columns).all()
     except:
         return Exception(f"Features names do not match!!! \n Your dataset has the columns, {missing_columns} which were not present during model fitting.")
     return df
 
-app =FastAPI()
+app =FastAPI(title="Churn Prediction App")
 
 app.add_middleware(
     CORSMiddleware,
@@ -214,24 +238,7 @@ def predict_churn(customer_data: CustomerData, threshold= 0.48950):
                                 customer_df.columns.tolist()
                             ]
 
-    # shap_explanation = shap.Explanation(
-    #     values=shap_values_customer[0], 
-    #     base_values=shap_explainer.expected_value,
-    #     data=customer_df.values[0], 
-    #     feature_names=customer_df.columns.tolist()
-    # )
 
-    # fig, ax =plt.subplots(figsize=(10,5))
-    # shap.waterfall_plot(shap_explanation, show=False)
-    # plt.title(f"Explanation for Churn Risk: {pred_prob:.1%}")
-    # plt.tight_layout()
-    # plt.show()
-
-    # buf = io.BytesIO()
-    # plt.savefig(buf, format='png', bbox_inches='tight')
-    # buf.seek(0)
-    # img_base64 = base64.b64encode(buf.read()).decode('utf-8')
-    # plt.close()
     return PredictionResponse(
         prediction= prediction,
         non_churn_prob= non_churn_prob,
@@ -242,5 +249,5 @@ def predict_churn(customer_data: CustomerData, threshold= 0.48950):
 
 
 if __name__== '__main__':
-    print(f"Running FastAPI")
+    print(f"Running FastAPI...")
     uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
