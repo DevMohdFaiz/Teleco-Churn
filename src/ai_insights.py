@@ -68,6 +68,7 @@ def build_context(churn_pred, churn_probability, top_churn_factors, data_feature
     - [Action 3 - proactive engagement]
 
     Keep it actionable and insightful for customer service teams and retention managers."""
+    
     return prompt
 
 
