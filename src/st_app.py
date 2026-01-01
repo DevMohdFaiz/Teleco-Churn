@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import streamlit as st
 from PIL import Image
 from typing import Dict
+ 
 import ai_insights
 
 current_dir = os.path.dirname(os.path.abspath("inference"))
@@ -64,7 +65,7 @@ def get_ai_response(shap_explanation, result)-> Dict:
     return ai_response
 
 
-st.title("Churn Prediction App")
+st.title("Churn Prediction App") 
 if check_api():
     st.success("✅ API Connected")
 else:
